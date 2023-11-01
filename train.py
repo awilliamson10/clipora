@@ -6,8 +6,8 @@ import os
 
 import open_clip
 import torch
-import tqdm
 from accelerate import Accelerator
+from tqdm.auto import tqdm
 
 from clipora.config.yaml import parse_yaml_to_args as parse_args
 from clipora.data import get_dataloader
@@ -24,7 +24,7 @@ def main(args):
 
     accelerator = Accelerator(
         gradient_accumulation_steps=args.gradient_accumulation_steps,
-        log_with=args.wandb,
+        log_with="wandb" if args.wandb else None,
     )
 
     if accelerator.is_main_process:
@@ -193,5 +193,6 @@ if __name__ == "__main__":
         type=str,
         help="The path to the yaml file containing the training configuration.",
     )
-    args = parse_args(parser.parse_args().yaml)
+    yaml = parser.parse_args().config
+    args = parse_args(yaml)
     main(args)
