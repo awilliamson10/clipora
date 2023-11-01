@@ -1,0 +1,5 @@
+[flake8]
+# These are ignored for compatiblity with black
+ignore = E501, E203, W503
+max-complexity = 10
+max-line-length = 127
