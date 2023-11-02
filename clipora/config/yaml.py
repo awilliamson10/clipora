@@ -12,6 +12,7 @@ def parse_yaml_to_args(yaml_file):
         "model_name": "",  # The name of the pretrained OpenCLIP model to use
         "output_dir": "/clipora_output",  # The directory to save the model to
         "lora_rank": 32,  # The rank of the LoRA matrices
+        "precision": "fp32",
         "gradient_accumulation_steps": 1,  # The number of gradient accumulation steps
         "gradient_checkpointing": False,  # Whether to use gradient checkpointing
         "use_8bit_adam": False,  # Whether to use 8-bit Adam

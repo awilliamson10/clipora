@@ -7,11 +7,12 @@ import os
 import open_clip
 import torch
 from accelerate import Accelerator
+from peft import LoraConfig, get_peft_model
 from tqdm.auto import tqdm
 
 from clipora.config.yaml import parse_yaml_to_args as parse_args
 from clipora.data import get_dataloader
-from clipora.lora.extract import extract_lora_ups_down, save_lora_weight
+from clipora.lora.extract import print_loras, save_lora_weight
 from clipora.lora.inject import inject_trainable_lora
 from clipora.scheduler.cosine import cosine_lr
 from clipora.utils import unwrap_model
@@ -25,7 +26,6 @@ def main(args):
     accelerator = Accelerator(
         gradient_accumulation_steps=args.gradient_accumulation_steps,
         log_with="wandb" if args.wandb else None,
-        mixed_precision=args.precision,
     )
 
     if accelerator.is_main_process:
@@ -54,12 +54,25 @@ def main(args):
     )
 
     # Inject LoRA
-    model.requires_grad_(True)
     model_lora_params, _ = inject_trainable_lora(
         model,
         target_replace_module=["MultiheadAttention"],
         r=args.lora_rank,
     )
+
+    print_loras(model.state_dict())
+
+    config = LoraConfig(
+        r=args.lora_rank,
+        lora_alpha=16,
+        target_modules=["lora_up", "lora_down"],
+        lora_dropout=0.1,
+        bias="none",
+    )
+
+    model = get_peft_model(model, config)
+    accelerator.print(f"LoRA injected, rank={args.lora_rank}")
+    accelerator.print(model.print_trainable_parameters())
 
     if args.gradient_checkpointing:
         model.set_gradient_checkpointing(True)
@@ -78,7 +91,7 @@ def main(args):
 
     params_to_optimize = [
         {
-            "params": itertools.chain(*model_lora_params),
+            "params": itertools.chain(model.parameters()),
             "lr": args.learning_rate,
         },
     ]
@@ -149,18 +162,7 @@ def main(args):
                         accelerator.unwrap_model(model),
                         lora_save,
                     )
-                    for _up, _down in extract_lora_ups_down(
-                        model, target_replace_module=["MultiheadAttention"]
-                    ):
-                        print(
-                            f"Epoch {epoch} - Step {global_step}: text encoder First Layer lora up",
-                            _up.weight.data,
-                        )
-                        print(
-                            f"Epoch {epoch} - Step {global_step}: text encoder First Layer lora down",
-                            _down.weight.data,
-                        )
-                        break
+                    print_loras(model.state_dict())
 
                     last_save = global_step
 
