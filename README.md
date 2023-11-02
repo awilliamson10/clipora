@@ -16,9 +16,9 @@
 
 The links below have most of the information/implmentation here in much cleaner ways, all credit to them, I just frankensteined them together to make this.
 
-https://github.com/cloneofsimo/lora
-https://arxiv.org/abs/2106.09685
-https://github.com/facebookresearch/ov-seg
-https://huggingface.co/blog/lora
-https://github.com/huggingface/peft
-https://github.com/KyanChen/MakeMultiHeadNaive
+- https://github.com/cloneofsimo/lora
+- https://arxiv.org/abs/2106.09685
+- https://github.com/facebookresearch/ov-seg
+- https://huggingface.co/blog/lora
+- https://github.com/huggingface/peft
+- https://github.com/KyanChen/MakeMultiHeadNaive
