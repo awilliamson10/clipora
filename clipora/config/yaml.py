@@ -10,13 +10,16 @@ def parse_yaml_to_args(yaml_file):
     # Define the default values
     defaults = {
         "model_name": "",  # The name of the pretrained OpenCLIP model to use
-        "output_dir": "/clipora_output",  # The directory to save the model to
-        "lora_rank": 32,  # The rank of the LoRA matrices
+        "pretrained": "",  # The path to the pretrained OpenCLIP model to use
+        "output_dir": "./clipora_output",  # The directory to save the model to
+        "lora_rank": 16,  # The rank of the LoRA matrices
+        "lora_alpha": 32,  # The alpha value for the LoRA matrices
+        "lora_dropout": 0.0,  # The dropout rate for the LoRA matrices
         "precision": "fp32",
         "gradient_accumulation_steps": 1,  # The number of gradient accumulation steps
         "gradient_checkpointing": False,  # Whether to use gradient checkpointing
         "use_8bit_adam": False,  # Whether to use 8-bit Adam
-        "learning_rate": 5e-4,  # The initial learning rate
+        "learning_rate": 5e-6,  # The initial learning rate
         "adam_beta1": 0.9,  # The beta1 value for Adam
         "adam_beta2": 0.999,  # The beta2 value for Adam
         "adam_epsilon": 1e-8,  # The epsilon value for Adam
@@ -31,6 +34,7 @@ def parse_yaml_to_args(yaml_file):
         "shuffle": True,  # Whether to shuffle the data
         "workers": 1,  # Number of dataloader workers per GPU.
         "wandb": False,  # Whether to use wandb logging
+        "wandb_project": "",  # The name of the wandb project
     }
 
     # Load the YAML file

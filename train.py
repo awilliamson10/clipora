@@ -35,7 +35,7 @@ def main(args):
 
         if args.wandb:
             accelerator.init_trackers(
-                project_name="clipora",
+                project_name=args.wandb_project,
                 config={
                     "learning_rate": args.learning_rate,
                     "dataset": args.instance_data_dir,
