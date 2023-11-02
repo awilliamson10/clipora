@@ -85,7 +85,7 @@ def main(args):
 
     params_to_optimize = [
         {
-            "params": itertools.chain(model.paramaters()),
+            "params": itertools.chain(model.parameters()),
             "lr": args.learning_rate,
         },
     ]
