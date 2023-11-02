@@ -7,3 +7,4 @@ wandb==0.15.12
 pandas==2.1.2
 peft
 scipy
+datasets[vision]
