@@ -1,20 +1,18 @@
 import argparse
 import itertools
 import logging
-import math
 import os
 
 import open_clip
 import torch
 from accelerate import Accelerator
+from peft import LoraConfig, get_peft_model
 from tqdm.auto import tqdm
 
 from clipora.config.yaml import parse_yaml_to_args as parse_args
 from clipora.data import get_dataloader
-from clipora.lora.extract import print_loras, save_lora_weight
-from clipora.lora.inject import inject_trainable_lora, set_token_embedding_grad
+from clipora.lora.inject import inject_linear_attention
 from clipora.scheduler.cosine import cosine_lr
-from clipora.utils import unwrap_model
 
 logger = logging.getLogger(__name__)
 
@@ -47,21 +45,28 @@ def main(args):
 
     # Load the model and tokenizer
     model, preprocess_train, _ = open_clip.create_model_and_transforms(
-        f"hf-hub:{args.model_name}",
-        precision=args.precision,
+        model_name=args.model_name,
+        pretrained=args.pretrained,
         device=accelerator.device,
     )
+    model_config = open_clip.get_model_config(args.model_name)
 
     # Inject LoRA
-    model.requires_grad_(False)
-    model_lora_params, _ = inject_trainable_lora(
-        model,
-        target_replace_module=["MultiheadAttention"],
-        r=args.lora_rank,
+    model = inject_linear_attention(
+        model=model,
+        embed_dim=model_config["embed_dim"],
+        num_heads=model_config["text_cfg"]["heads"],
     )
-    set_token_embedding_grad(model)
-
-    print_loras(model.state_dict())
+    config = LoraConfig(
+        r=args.lora_rank,
+        lora_alpha=args.lora_alpha,
+        lora_dropout=args.lora_dropout,
+        target_modules=["qkv", "proj"],
+    )
+    model = get_peft_model(model, config)
+    # model.token_embedding.requires_grad_(True)
+    accelerator.print("LoRA injected.")
+    accelerator.print(model.print_trainable_parameters())
 
     if args.gradient_checkpointing:
         model.set_gradient_checkpointing(True)
@@ -80,7 +85,7 @@ def main(args):
 
     params_to_optimize = [
         {
-            "params": itertools.chain(*model_lora_params),
+            "params": itertools.chain(model.paramaters()),
             "lr": args.learning_rate,
         },
     ]
@@ -137,7 +142,6 @@ def main(args):
 
             optimizer.step()
             scheduler(step=global_step)
-            optimizer.zero_grad()
             progress_bar.update(1)
             global_step += 1
 
@@ -147,11 +151,9 @@ def main(args):
                     lora_save = f"{args.output_dir}/lora_weight_e{epoch}_s{global_step}.text_encoder.pt"
                     logger.info(f"Saving LoRA weights to {lora_save}")
 
-                    save_lora_weight(
-                        accelerator.unwrap_model(model),
-                        lora_save,
-                    )
-                    print_loras(model.state_dict())
+                    for name, param in model.named_parameters():
+                        if param.requires_grad:
+                            print(name, param.data, param.grad)
 
                     last_save = global_step
 
@@ -168,11 +170,6 @@ def main(args):
     if accelerator.is_local_main_process:
         lora_save = (
             f"{args.output_dir}/lora_weight_e{epoch}_s{global_step}.text_encoder.pt"
-        )
-        save_lora_weight(
-            # unwrap_model(model).logit_scale.clamp_(0, math.log(100)), lora_save
-            accelerator.unwrap_model(model),
-            lora_save,
         )
         logger.info(f"Saving LoRA weights to {lora_save}")
 

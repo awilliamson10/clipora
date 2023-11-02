@@ -1,13 +1,22 @@
-model_name: "laion/CLIP-ViT-H-14-laion2B-s32B-b79K"
-output_dir: "/clipora_output"
+model_name: "ViT-H-14"
+pretrained: "laion2B-s32B-b79K"
+
+output_dir: "./clipora_output"
+
 lora_rank: 32
+lora_alpha: 1.0
+lora_dropout: 0.0
+
 gradient_accumulation_steps: 1
 gradient_checkpointing: False
+
 use_8bit_adam: False
+
 learning_rate: 0.000005
 epochs: 3
 warmup: 15
 save_steps: 20
+
 instance_data_dir: "./train_data.csv"
 image_col: "image_path"
 text_col: "play_text"
@@ -15,5 +24,6 @@ csv_separator: "\t"
 batch_size: 4
 shuffle: True
 workers: 1
+
 wandb: True
 wanb_project: clipora
