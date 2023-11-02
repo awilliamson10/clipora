@@ -6,7 +6,7 @@
 
 ### TODOS
 
-- [ ] Adapter saving and loading
+- [x] Adapter saving
 - [ ] Merging adapters with the original model
 - [ ] Inferencing with the adapter
 - [ ] Add better documentation

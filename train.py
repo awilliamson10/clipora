@@ -150,11 +150,7 @@ def main(args):
                     last_save = global_step
                     lora_save = f"{args.output_dir}/lora_weight_e{epoch}_s{global_step}.text_encoder.pt"
                     logger.info(f"Saving LoRA weights to {lora_save}")
-
-                    for name, param in model.named_parameters():
-                        if param.requires_grad:
-                            print(name, param.data, param.grad)
-
+                    model.save_pretrained(lora_save)
                     last_save = global_step
 
             logs = {
@@ -172,6 +168,7 @@ def main(args):
             f"{args.output_dir}/lora_weight_e{epoch}_s{global_step}.text_encoder.pt"
         )
         logger.info(f"Saving LoRA weights to {lora_save}")
+        model.save_pretrained(lora_save)
 
     accelerator.print("\n\nLoRA Training completed.\n\n")
     accelerator.end_training()
