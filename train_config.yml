@@ -3,8 +3,8 @@ pretrained: "laion2B-s32B-b79K"
 
 output_dir: "./clipora_output"
 
-lora_rank: 32
-lora_alpha: 1.0
+lora_rank: 16
+lora_alpha: 32
 lora_dropout: 0.0
 
 gradient_accumulation_steps: 1
@@ -12,17 +12,17 @@ gradient_checkpointing: False
 
 use_8bit_adam: False
 
-learning_rate: 0.000005
+learning_rate: 0.00005
 epochs: 3
-warmup: 15
-save_steps: 20
+warmup: 100
+save_steps: 1000
 
-instance_data_dir: "./train_data.csv"
-datatype: "csv"
-image_col: "image_path"
-text_col: "play_text"
+instance_data_dir: "gigant/oldbookillustrations"
+datatype: "hf"
+image_col: "1600px"
+text_col: "artist_name"
 csv_separator: "\t"
-batch_size: 4
+batch_size: 8
 shuffle: True
 workers: 1
 

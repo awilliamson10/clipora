@@ -20,8 +20,16 @@ class HFDataset(Dataset):
         return len(self.dataset)
 
     def __getitem__(self, idx):
-        images = self.transforms(self.dataset[idx][self.image_col])
-        texts = tokenize([self.dataset[idx][self.text_col]])[0]
+        try:
+            images = self.transforms(self.dataset[idx][self.image_col])
+        except Exception as e:
+            logging.error(f"Failed to transform image at index {idx}: {e}")
+            images = self.transforms(Image.new("RGB", (224, 224)))
+        try:
+            texts = tokenize([self.dataset[idx][self.text_col]])[0]
+        except Exception as e:
+            logging.error(f"Failed to tokenize text at index {idx}: {e}")
+            texts = tokenize([""])[0]
         return images, texts
 
 
