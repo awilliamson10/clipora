@@ -20,7 +20,6 @@ def inject_linear_attention(
                 break
 
         if target_module is not None and hasattr(target_module, "resblocks"):
-            print(target_module)
             for module in target_module.resblocks:
                 injection = InjectedMultiHeadAttention(
                     embed_dim=embed_dim,

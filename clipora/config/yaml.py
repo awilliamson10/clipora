@@ -26,6 +26,7 @@ def parse_yaml_to_args(yaml_file):
         "epochs": 5,  # The number of epochs to train for
         "warmup": 500,  # The number of warmup steps
         "save_steps": 1000,  # The number of steps between each save
+        "datatype": "csv",  # The type of data to use
         "instance_data_dir": "./data.csv",  # The location of the training data
         "image_col": "image",  # The name of the column containing the image paths
         "text_col": "text",  # The name of the column containing the text

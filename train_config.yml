@@ -18,6 +18,7 @@ warmup: 15
 save_steps: 20
 
 instance_data_dir: "./train_data.csv"
+datatype: "csv"
 image_col: "image_path"
 text_col: "play_text"
 csv_separator: "\t"

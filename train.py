@@ -66,7 +66,7 @@ def main(args):
     model = get_peft_model(model, config)
     # model.token_embedding.requires_grad_(True)
     accelerator.print("LoRA injected.")
-    accelerator.print(model.print_trainable_parameters())
+    model.print_trainable_parameters()
 
     if args.gradient_checkpointing:
         model.set_gradient_checkpointing(True)
