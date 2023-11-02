@@ -7,13 +7,12 @@ import os
 import open_clip
 import torch
 from accelerate import Accelerator
-from peft import LoraConfig, get_peft_model
 from tqdm.auto import tqdm
 
 from clipora.config.yaml import parse_yaml_to_args as parse_args
 from clipora.data import get_dataloader
 from clipora.lora.extract import print_loras, save_lora_weight
-from clipora.lora.inject import inject_trainable_lora
+from clipora.lora.inject import inject_trainable_lora, set_token_embedding_grad
 from clipora.scheduler.cosine import cosine_lr
 from clipora.utils import unwrap_model
 
@@ -54,25 +53,15 @@ def main(args):
     )
 
     # Inject LoRA
+    model.requires_grad_(False)
     model_lora_params, _ = inject_trainable_lora(
         model,
         target_replace_module=["MultiheadAttention"],
         r=args.lora_rank,
     )
+    set_token_embedding_grad(model)
 
     print_loras(model.state_dict())
-
-    config = LoraConfig(
-        r=args.lora_rank,
-        lora_alpha=16,
-        target_modules=["lora_up", "lora_down"],
-        lora_dropout=0.1,
-        bias="none",
-    )
-
-    model = get_peft_model(model, config)
-    accelerator.print(f"LoRA injected, rank={args.lora_rank}")
-    accelerator.print(model.print_trainable_parameters())
 
     if args.gradient_checkpointing:
         model.set_gradient_checkpointing(True)
@@ -91,7 +80,7 @@ def main(args):
 
     params_to_optimize = [
         {
-            "params": itertools.chain(model.parameters()),
+            "params": itertools.chain(*model_lora_params),
             "lr": args.learning_rate,
         },
     ]

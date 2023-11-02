@@ -7,6 +7,10 @@ from clipora.lora.linear import LoraInjectedLinear
 from clipora.utils import _find_modules
 
 
+def set_token_embedding_grad(model):
+    model.token_embedding.requires_grad_(True)
+
+
 def inject_trainable_lora(
     model: nn.Module,
     target_replace_module: Set[str] = {"CLIPAttention"},

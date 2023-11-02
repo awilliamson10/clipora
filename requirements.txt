@@ -5,5 +5,4 @@ open_clip_torch==2.23.0
 accelerate==0.24.1
 wandb==0.15.12
 pandas==2.1.2
-peft
 scipy
