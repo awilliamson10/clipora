@@ -10,6 +10,7 @@ def inject_linear_attention(
     encoders: Set[str] = {"transformer", "visual"},
     embed_dim: int = 768,
     num_heads: int = 12,
+    **kwargs,
 ):
     for encoder in encoders:
         sub_modules = encoder.split(".")
@@ -24,6 +25,7 @@ def inject_linear_attention(
                 injection = InjectedMultiHeadAttention(
                     embed_dim=embed_dim,
                     num_heads=num_heads,
+                    **kwargs,
                 )
                 injection.set_parameters(module.attn)
                 module.attn = injection

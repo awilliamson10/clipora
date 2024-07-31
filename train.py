@@ -51,11 +51,18 @@ def main(args):
     )
     model_config = open_clip.get_model_config(args.model_name)
 
-    # Inject LoRA
+    # Inject linear attention to TextTransformer
     model = inject_linear_attention(
         model=model,
+        encoder={"transformer"},
         embed_dim=model_config["embed_dim"],
         num_heads=model_config["text_cfg"]["heads"],
+    )
+    model = inject_linear_attention(
+        model=model,
+        encoders={"visual.transformer"},
+        embed_dim=model_config["vision_cfg"]["width"],
+        num_heads=16,  # There may be a better way to find this, but this is true for ViT-L/14
     )
     config = LoraConfig(
         r=args.lora_rank,
@@ -97,11 +104,19 @@ def main(args):
         eps=args.adam_epsilon,
     )
 
-    train_dataloader = get_dataloader(args, preprocess_train)
+    train_dataloader = get_dataloader(args, preprocess_train, "train")
+    val_dataloader = get_dataloader(args, preprocess_train, "val")
     assert len(train_dataloader), "No data found, please check your data location."
 
     # create scheduler if train
     total_steps = train_dataloader.num_batches * args.epochs
+    # if args.warmup is float, it is a percentage of total_steps
+    if isinstance(args.warmup, float):
+        assert (
+            0 <= args.warmup <= 1
+        ), "Warmup must be between 0 and 1 if not a fixed number of steps."
+        args.warmup = int(args.warmup * total_steps)
+
     scheduler = cosine_lr(optimizer, args.learning_rate, args.warmup, total_steps)
 
     model, optimizer, scheduler = accelerator.prepare(model, optimizer, scheduler)
@@ -126,6 +141,33 @@ def main(args):
     for epoch in range(args.epochs):
         model.train()
         for i, batch in enumerate(train_dataloader):
+
+            if global_step > 0 and global_step % args.eval_interval == 0:
+                model.eval()
+                with torch.no_grad():
+                    for j, val_batch in enumerate(val_dataloader):
+                        images, texts = val_batch
+                        images = images.to(device=accelerator.device, non_blocking=True)
+                        texts = texts.to(device=accelerator.device, non_blocking=True)
+
+                        image_features, text_features, logit_scale = model(
+                            images, texts
+                        )
+                        loss = open_clip.ClipLoss()
+                        total_loss = loss(image_features, text_features, logit_scale)
+
+                        logs = {
+                            "val_loss": total_loss.item(),
+                            "lr": optimizer.param_groups[0]["lr"],
+                            "epoch": epoch,
+                        }
+                        accelerator.log(logs, step=global_step)
+
+                        if j > args.eval_steps:
+                            break
+
+                model.train()
+
             loss = open_clip.ClipLoss()
 
             images, texts = batch

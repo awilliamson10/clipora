@@ -14,17 +14,19 @@ use_8bit_adam: False
 
 learning_rate: 0.000005
 epochs: 3
-warmup: 15
-save_steps: 20
+warmup: 0.1
+save_steps: 1000
+eval_interval: 1000
+eval_steps: 100
 
 instance_data_dir: "./train_data.csv"
 datatype: "csv"
-image_col: "image_path"
-text_col: "play_text"
+image_col: "s3_url"
+text_col: "description"
 csv_separator: "\t"
-batch_size: 4
+batch_size: 1
 shuffle: True
-workers: 1
+workers: 0
 
-wandb: True
+wandb: False
 wanb_project: clipora

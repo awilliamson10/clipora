@@ -26,14 +26,17 @@ def parse_yaml_to_args(yaml_file):
         "epochs": 5,  # The number of epochs to train for
         "warmup": 500,  # The number of warmup steps
         "save_steps": 1000,  # The number of steps between each save
+        "eval_steps": 100,  # The number of steps to perform evaluation
+        "eval_interval": 100,  # The number of steps between each evaluation
         "datatype": "csv",  # The type of data to use
-        "instance_data_dir": "./data.csv",  # The location of the training data
+        "train_data_dir": "./data.csv",  # The location of the training data
+        "val_data_dir": "./data.csv",  # The location of the validation data
         "image_col": "image",  # The name of the column containing the image paths
         "text_col": "text",  # The name of the column containing the text
         "csv_separator": ",",  # The separator used in the CSV file
         "batch_size": 32,  # The batch size for training per GPU
         "shuffle": True,  # Whether to shuffle the data
-        "workers": 1,  # Number of dataloader workers per GPU.
+        "workers": 0,  # Number of dataloader workers per GPU.
         "wandb": False,  # Whether to use wandb logging
         "wandb_project": "",  # The name of the wandb project
     }
