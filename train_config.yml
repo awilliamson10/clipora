@@ -19,7 +19,8 @@ save_steps: 1000
 eval_interval: 1000
 eval_steps: 100
 
-instance_data_dir: "./train_data.csv"
+train_data_dir: "./train_data.csv"
+val_data_dir: "./val_data.csv"
 datatype: "csv"
 image_col: "s3_url"
 text_col: "description"
