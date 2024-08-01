@@ -1,30 +1,36 @@
 model_name: "ViT-H-14"
 pretrained: "laion2B-s32B-b79K"
+compile: True
+seed: 42
 
-output_dir: "./clipora_output"
-
-lora_rank: 32
-lora_alpha: 1.0
-lora_dropout: 0.0
-
-gradient_accumulation_steps: 1
-gradient_checkpointing: False
-
-use_8bit_adam: False
-
-learning_rate: 0.000005
-epochs: 3
-warmup: 15
-save_steps: 20
-
-instance_data_dir: "./train_data.csv"
-datatype: "csv"
-image_col: "image_path"
-text_col: "play_text"
-csv_separator: "\t"
-batch_size: 4
-shuffle: True
-workers: 1
+device: "cpu"
+output_dir: "./output"
 
 wandb: True
 wanb_project: clipora
+
+train_dataset: "./data/train.csv"
+eval_dataset: "./data/val.csv"
+datatype: "csv"
+csv_separator: "\t"
+image_col: "image"
+text_col: "text"
+shuffle: True
+
+lora_rank: 16
+lora_alpha: 32
+lora_dropout: 0.0
+
+batch_size: 32
+gradient_accumulation_steps: 1
+gradient_checkpointing: True
+
+use_8bit_adam: False
+
+learning_rate: 1e-4
+epochs: 3
+warmup: 0.01
+save_interval: 1000
+eval_interval: 1000
+eval_steps: 100
+

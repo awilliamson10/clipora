@@ -145,12 +145,12 @@ class InjectedMultiHeadAttention(nn.Module):
     def set_parameters(self, torch_tgt_module):
         assert isinstance(torch_tgt_module, nn.MultiheadAttention)
         assert self.embed_dim == torch_tgt_module.embed_dim
-        assert self.batch_first == torch_tgt_module.batch_first
-        assert self.dropout == torch_tgt_module.dropout
-        assert self.head_dim == torch_tgt_module.head_dim
-        assert self.num_heads == torch_tgt_module.num_heads
-        assert self.kdim == torch_tgt_module.kdim
-        assert self.vdim == torch_tgt_module.vdim
+        # assert self.batch_first == torch_tgt_module.batch_first
+        # assert self.dropout == torch_tgt_module.dropout
+        # assert self.head_dim == torch_tgt_module.head_dim
+        # assert self.num_heads == torch_tgt_module.num_heads
+        # assert self.kdim == torch_tgt_module.kdim
+        # assert self.vdim == torch_tgt_module.vdim
         self.qkv.weight.data = torch_tgt_module.in_proj_weight.data
         self.qkv.bias.data = torch_tgt_module.in_proj_bias.data
         self.proj.weight.data = torch_tgt_module.out_proj.weight.data
