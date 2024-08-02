@@ -44,17 +44,17 @@ class CSVDataset(Dataset):
         return images, texts
 
 
-def get_dataloader(args, preprocess):
+def get_dataloader(args, preprocess, split="train"):
     if args.datatype == "hf":
         dataset = HFDataset(
-            data_location=args.instance_data_dir,
+            data_location=args.train_dataset if split == "train" else args.eval_dataset,
             transforms=preprocess,
             image_col=args.image_col,
             text_col=args.text_col,
         )
     elif args.datatype == "csv":
         dataset = CSVDataset(
-            data_location=args.instance_data_dir,
+            data_location=args.train_dataset if split == "train" else args.eval_dataset,
             transforms=preprocess,
             image_col=args.image_col,
             text_col=args.text_col,
