@@ -48,6 +48,7 @@ def init_model(config: TrainConfig):
     if config.lora_text:
         model = inject_linear_attention(
             model=model,
+            encoders={"transformer"},
             embed_dim=model_config["embed_dim"],
             num_heads=model_config["text_cfg"]["heads"],
         )
