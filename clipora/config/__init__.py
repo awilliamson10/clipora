@@ -7,7 +7,7 @@ import yaml
 class TrainConfig:
     model_name: str = "ViT-H-14"
     pretrained: str = ""
-    compile: bool = True
+    compile: bool = False
     seed: int = 42
 
     device: str = "cuda"
@@ -48,8 +48,8 @@ class TrainConfig:
     epochs: int = 5
     warmup: int = 500
     save_interval: int = 1000
-    eval_interval: int = 1000
-    eval_steps: int = 1000
+    eval_interval: int = 100
+    eval_steps: int = 100
 
 
 def parse_yaml_to_config(yaml_path: str) -> TrainConfig:

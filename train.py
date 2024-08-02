@@ -58,14 +58,15 @@ def init_model(config: TrainConfig):
             embed_dim=model_config["vision_cfg"]["width"],
             num_heads=config.vision_heads,
         )
-    config = LoraConfig(
+    lora_config = LoraConfig(
         r=config.lora_rank,
-        alpha=config.lora_alpha,
-        dropout=config.lora_dropout,
+        lora_alpha=config.lora_alpha,
+        lora_dropout=config.lora_dropout,
+        target_modules=["qkv", "proj"],
     )
-    model = get_peft_model(model, config)
+    model = get_peft_model(model, lora_config)
     if config.compile:
-        model = model.compile()
+        model.compile()
     return model, preprocess_train
 
 
@@ -102,7 +103,7 @@ def main(config: TrainConfig):
     assert len(train_dataloader), "No data found, please check your data location."
 
     if config.gradient_checkpointing:
-        model.set_gradient_checkpointing(True)
+        model.set_grad_checkpointing(True)
 
     if config.use_8bit_adam:
         try:
@@ -116,6 +117,9 @@ def main(config: TrainConfig):
     else:
         optimizer_class = torch.optim.AdamW
 
+    if isinstance(config.learning_rate, str):
+        config.learning_rate = float(config.learning_rate)
+
     params_to_optimize = [
         {
             "params": itertools.chain(model.parameters()),
@@ -126,8 +130,8 @@ def main(config: TrainConfig):
     optimizer = optimizer_class(
         params_to_optimize,
         lr=config.learning_rate,
-        betas=(config.beta1, config.beta2),
-        eps=config.epsilon,
+        betas=(config.adam_beta1, config.adam_beta2),
+        eps=config.adam_epsilon,
     )
 
     # create scheduler if train
@@ -163,38 +167,41 @@ def main(config: TrainConfig):
 
     for epoch in range(config.epochs):
         model.train()
-        if accelerator.is_local_main_process:
-            if global_step % config.eval_interval == 0:
-                if accelerator.is_local_main_process:
-                    eval_loss = evaluate(model, eval_dataloader, config)
-                    accelerator.log(eval_loss, step=global_step)
-                    if eval_loss["eval_loss"] < best_val_loss:
-                        best_val_loss = eval_loss["eval_loss"]
-                        if config.always_save_checkpoint:
+        for step, batch in enumerate(train_dataloader):
+            if accelerator.is_local_main_process:
+                if global_step % config.eval_interval == 0:
+                    if accelerator.is_local_main_process:
+                        eval_loss = evaluate(model, eval_dataloader, config)
+                        accelerator.log(eval_loss, step=global_step)
+                        progress_bar.write(
+                            f"Step: {global_step}, Eval loss: {eval_loss['eval_loss']}"
+                        )
+                        if eval_loss["eval_loss"] < best_val_loss:
+                            best_val_loss = eval_loss["eval_loss"]
                             save_path = os.path.join(
                                 config.output_dir, f"checkpoint_{global_step}"
                             )
                             model.save_pretrained(save_path)
 
-        X, Y = next(iter(train_dataloader))
-        loss = compute_clip_loss(model, X, Y)
-        accelerator.backward(loss)
-        if accelerator.sync_gradients:
-            params_to_clip = model.parameters()
-            accelerator.clip_grad_norm_(params_to_clip, 1.0)  # args.max_grad_norm)
-        optimizer.step()
-        scheduler(global_step)
-        progress_bar.update(1)
-        global_step += 1
+            X, Y = batch
+            loss = compute_clip_loss(model, X, Y)
+            accelerator.backward(loss)
+            if accelerator.sync_gradients:
+                params_to_clip = model.parameters()
+                accelerator.clip_grad_norm_(params_to_clip, 1.0)  # args.max_grad_norm)
+            optimizer.step()
+            scheduler(global_step)
+            progress_bar.update(1)
+            global_step += 1
 
-        logs = {
-            "loss": loss.item(),
-            "learning_rate": optimizer.param_groups[0]["lr"],
-            "step": global_step,
-            "epoch": epoch,
-        }
-        progress_bar.set_postfix(**logs)
-        accelerator.log(logs, step=global_step)
+            logs = {
+                "loss": loss.item(),
+                "learning_rate": optimizer.param_groups[0]["lr"],
+                "step": global_step,
+                "epoch": epoch,
+            }
+            progress_bar.set_postfix(**logs)
+            accelerator.log(logs, step=global_step)
 
     accelerator.wait_for_everyone()
 
@@ -204,10 +211,6 @@ def main(config: TrainConfig):
 
     accelerator.print("\n\nTraining completed.\n\n")
     accelerator.end_training()
-
-    # merge and save final model
-    merged_model = model.merge_and_unload()
-    merged_model.save_pretrained(f"{config.output_dir}/merged")
 
 
 if __name__ == "__main__":
