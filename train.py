@@ -9,6 +9,7 @@ import torch
 from accelerate import Accelerator
 from peft import LoraConfig, get_peft_model
 from tqdm.auto import tqdm
+from transformers import CLIPImageProcessor, CLIPModel
 
 from clipora.config import TrainConfig, parse_yaml_to_config
 from clipora.data import get_dataloader
@@ -18,11 +19,10 @@ from clipora.scheduler.cosine import cosine_lr
 logger = logging.getLogger(__name__)
 
 
-def compute_clip_loss(model, X, Y):
-    loss = open_clip.ClipLoss()
-    image_features, text_features, logit_scale = model(X, Y)
-    total_loss = loss(image_features, text_features, logit_scale)
-    return total_loss
+def compute_clip_loss(model, input_ids, pixel_values):
+    input_ids = input_ids.to(model.device)
+    pixel_values = pixel_values.to(model.device)
+    return model(input_ids=input_ids, pixel_values=pixel_values, return_loss=True).loss
 
 
 @torch.no_grad()
@@ -31,8 +31,8 @@ def evaluate(model, dataloader, config):
     model.eval()
     losses = torch.zeros(config.eval_steps)
     for k in range(config.eval_steps):
-        X, Y = next(iter(dataloader))
-        loss = compute_clip_loss(model, X, Y)
+        pixels, input_ids = next(iter(dataloader))
+        loss = compute_clip_loss(model, input_ids, pixels)
         losses[k] = loss.item()
     out["eval_loss"] = losses.mean()
     model.train()
@@ -40,35 +40,22 @@ def evaluate(model, dataloader, config):
 
 
 def init_model(config: TrainConfig):
-    model, preprocess_train, _ = open_clip.create_model_and_transforms(
-        model_name=config.model_name,
-        pretrained=config.pretrained,
-    )
-    model_config = open_clip.get_model_config(config.model_name)
-    if config.lora_text:
-        model = inject_linear_attention(
-            model=model,
-            encoders={"transformer"},
-            embed_dim=model_config["embed_dim"],
-            num_heads=model_config["text_cfg"]["heads"],
-        )
-    if config.lora_vision:
-        model = inject_linear_attention(
-            model=model,
-            encoders={"visual.transformer"},
-            embed_dim=model_config["vision_cfg"]["width"],
-            num_heads=config.vision_heads,
-        )
+    model = CLIPModel.from_pretrained(config.model)
+    image_processor = CLIPImageProcessor.from_pretrained(config.model)
     lora_config = LoraConfig(
         r=config.lora_rank,
         lora_alpha=config.lora_alpha,
         lora_dropout=config.lora_dropout,
-        target_modules=["qkv", "proj"],
+        target_modules=["k_proj", "v_proj", "q_proj", "out_proj"],
     )
     model = get_peft_model(model, lora_config)
     if config.compile:
         model.compile()
-    return model, preprocess_train
+    total_params = sum(p.numel() for p in model.parameters())
+    trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    print(f"No. of parameters: {total_params:,}")
+    print(f"No. of trainable parameters: {trainable_params:,}")
+    return model, image_processor
 
 
 def main(config: TrainConfig):
@@ -97,10 +84,10 @@ def main(config: TrainConfig):
         torch.manual_seed(seed)
         torch.cuda.manual_seed_all(seed)
 
-    model, preprocess_train = init_model(config)
+    model, image_preprocess = init_model(config)
 
-    train_dataloader = get_dataloader(config, preprocess_train, "train")
-    eval_dataloader = get_dataloader(config, preprocess_train, "val")
+    train_dataloader = get_dataloader(config, image_preprocess, "train")
+    eval_dataloader = get_dataloader(config, image_preprocess, "val")
     assert len(train_dataloader), "No data found, please check your data location."
 
     if config.gradient_checkpointing:
@@ -179,13 +166,11 @@ def main(config: TrainConfig):
                         )
                         if eval_loss["eval_loss"] < best_val_loss:
                             best_val_loss = eval_loss["eval_loss"]
-                            save_path = os.path.join(
-                                config.output_dir, f"checkpoint_{global_step}"
-                            )
+                            save_path = os.path.join(config.output_dir, "best_val")
                             model.save_pretrained(save_path)
 
-            X, Y = batch
-            loss = compute_clip_loss(model, X, Y)
+            pixels, input_ids = batch
+            loss = compute_clip_loss(model, input_ids, pixels)
             accelerator.backward(loss)
             if accelerator.sync_gradients:
                 params_to_clip = model.parameters()
@@ -207,8 +192,9 @@ def main(config: TrainConfig):
     accelerator.wait_for_everyone()
 
     if accelerator.is_local_main_process:
+        merged = model.merged_and_unload()
         save_path = os.path.join(config.output_dir)
-        model.save_pretrained(save_path)
+        merged.save_pretrained(save_path)
 
     accelerator.print("\n\nTraining completed.\n\n")
     accelerator.end_training()

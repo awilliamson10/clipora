@@ -8,9 +8,9 @@ from torch.utils.data import DataLoader, Dataset
 
 
 class HFDataset(Dataset):
-    def __init__(self, data_location, transforms, image_col, text_col):
+    def __init__(self, data_location, transforms, image_col, text_col, split="train"):
         logging.debug(f"Loading HF dataset from {data_location}.")
-        self.dataset = datasets.load_dataset(data_location, split="train")
+        self.dataset = datasets.load_dataset(data_location, split=split)
         self.image_col = image_col
         self.text_col = text_col
         self.transforms = transforms
@@ -21,6 +21,8 @@ class HFDataset(Dataset):
 
     def __getitem__(self, idx):
         images = self.transforms(self.dataset[idx][self.image_col])
+        # the images here are a BatchFeature object, so we need to extract the tensor
+        images = images["pixel_values"][0]
         texts = tokenize([self.dataset[idx][self.text_col]])[0]
         return images, texts
 
@@ -40,6 +42,8 @@ class CSVDataset(Dataset):
 
     def __getitem__(self, idx):
         images = self.transforms(Image.open(str(self.images[idx])))
+        # the images here are a BatchFeature object, so we need to extract the tensor
+        images = images["pixel_values"]
         texts = tokenize([str(self.captions[idx])])[0]
         return images, texts
 
@@ -51,6 +55,7 @@ def get_dataloader(args, preprocess, split="train"):
             transforms=preprocess,
             image_col=args.image_col,
             text_col=args.text_col,
+            split=split if split == "train" else "test",
         )
     elif args.datatype == "csv":
         dataset = CSVDataset(

@@ -5,8 +5,7 @@ import yaml
 
 @dataclass
 class TrainConfig:
-    model_name: str = "ViT-H-14"
-    pretrained: str = ""
+    model: str = "openai/clip-vit-base-patch32"
     compile: bool = False
     seed: int = 42
 
