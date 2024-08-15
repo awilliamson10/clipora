@@ -4,7 +4,6 @@ import logging
 import os
 
 import numpy as np
-import open_clip
 import torch
 from accelerate import Accelerator
 from peft import LoraConfig, get_peft_model
@@ -13,7 +12,6 @@ from transformers import CLIPImageProcessor, CLIPModel
 
 from clipora.config import TrainConfig, parse_yaml_to_config
 from clipora.data import get_dataloader
-from clipora.lora.inject import inject_linear_attention
 from clipora.scheduler.cosine import cosine_lr
 
 logger = logging.getLogger(__name__)
