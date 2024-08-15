@@ -192,7 +192,7 @@ def main(config: TrainConfig):
     accelerator.wait_for_everyone()
 
     if accelerator.is_local_main_process:
-        merged = model.merged_and_unload()
+        merged = model.merge_and_unload()
         save_path = os.path.join(config.output_dir)
         merged.save_pretrained(save_path)
 
